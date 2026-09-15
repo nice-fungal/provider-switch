@@ -52,6 +52,56 @@ function renderPiActions({
 }
 
 describe("ProviderActions Pi provider switching", () => {
+  it("allows deleting a Kilo provider while keeping editing disabled", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+
+    render(
+      <ProviderActions
+        appId="kilo"
+        isCurrent
+        isManagementDisabled
+        onSwitch={vi.fn()}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />,
+    );
+
+    const editButton = screen.getByRole("button", { name: "common.edit" });
+    const deleteButton = screen.getByRole("button", {
+      name: "common.delete",
+    });
+    expect(editButton).toBeDisabled();
+    expect(deleteButton).toBeEnabled();
+
+    await user.click(editButton);
+    await user.click(deleteButton);
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps Kilo provider switching on the shared action path", async () => {
+    const user = userEvent.setup();
+    const onSwitch = vi.fn();
+
+    render(
+      <ProviderActions
+        appId="kilo"
+        isCurrent={false}
+        isManagementDisabled
+        onSwitch={onSwitch}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const switchButton = screen.getByRole("button", { name: "provider.enable" });
+    expect(switchButton).toBeEnabled();
+    await user.click(switchButton);
+    expect(onSwitch).toHaveBeenCalledTimes(1);
+  });
+
   it("omits duplication when the caller disallows it", () => {
     render(
       <ProviderActions

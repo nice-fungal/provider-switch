@@ -1259,9 +1259,10 @@ function App() {
                       {settingsData?.enableLocalProxy && (
                         <ProxyToggle activeApp={proxyAppId} />
                       )}
-                      {settingsData?.enableFailoverToggle && (
-                        <FailoverToggle activeApp={proxyAppId} />
-                      )}
+                      {settingsData?.enableFailoverToggle &&
+                        proxyAppId !== "kilo" && (
+                          <FailoverToggle activeApp={proxyAppId} />
+                        )}
                     </>
                   ) : null}
                 </div>

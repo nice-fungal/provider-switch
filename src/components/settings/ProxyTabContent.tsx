@@ -26,10 +26,13 @@ interface ProxyTabContentProps {
   onAutoSave: (updates: Partial<SettingsFormState>) => Promise<boolean | void>;
 }
 
-export const FAILOVER_APPS = PROXY_APP_IDS.map((id) => ({
-  id,
-  label: getAppLabel(id),
-}));
+/** Apps with an implemented failover data plane. */
+export const FAILOVER_APPS = PROXY_APP_IDS.filter((id) => id !== "kilo").map(
+  (id) => ({
+    id,
+    label: getAppLabel(id),
+  }),
+);
 
 export function ProxyTabContent({
   settings,
