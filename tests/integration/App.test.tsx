@@ -9,6 +9,7 @@ import {
   setCurrentProviderId,
   setLiveProviderIds,
   setProviders,
+  setSettings,
 } from "../msw/state";
 import { emitTauriEvent } from "../msw/tauriMocks";
 import { server } from "../msw/server";
@@ -348,6 +349,63 @@ describe("App integration with MSW", () => {
     expect(toastErrorMock).not.toHaveBeenCalledWith(
       expect.stringContaining("Provider key is required for openclaw"),
     );
+  });
+
+  it("renders Kilo providers from the persisted provider backend", async () => {
+    localStorage.setItem("cc-switch-last-app", "kilo");
+    setSettings({ enableLocalProxy: true });
+    setProviders("kilo", {
+      volcengine: {
+        id: "volcengine",
+        name: "Volc",
+        settingsConfig: { volcengine: { options: {} } },
+      },
+    });
+    setCurrentProviderId("kilo", "volcengine");
+    const getAllSpy = vi.spyOn(providersApi, "getAll");
+    const getCurrentSpy = vi.spyOn(providersApi, "getCurrent");
+
+    try {
+      const { default: App } = await import("@/App");
+      renderApp(App);
+
+      // Kilo is entered as the active app on the homepage.
+      await waitFor(() =>
+        expect(screen.getByTestId("app-switcher").textContent).toContain(
+          "kilo",
+        ),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId("provider-list").textContent).toContain(
+          "volcengine",
+        ),
+      );
+      expect(screen.getByTestId("current-provider").textContent).toBe(
+        "volcengine",
+      );
+
+      expect(getAllSpy).toHaveBeenCalledWith("kilo");
+      expect(getCurrentSpy).toHaveBeenCalledWith("kilo");
+
+      // The standard proxy takeover toggle is rendered for Kilo.
+      await waitFor(() =>
+        expect(
+          screen.getByRole("switch", {
+            name: "proxy.takeover.ariaLabel",
+            hidden: true,
+          }),
+        ).toBeInTheDocument(),
+      );
+
+      expect(screen.getByTitle("skills.manage")).toBeInTheDocument();
+      expect(screen.getByTitle("prompts.manage")).toBeInTheDocument();
+      expect(screen.getByTitle("sessionManager.title")).toBeInTheDocument();
+      expect(screen.getByTitle("mcp.title")).toBeInTheDocument();
+    } finally {
+      getAllSpy.mockRestore();
+      getCurrentSpy.mockRestore();
+    }
   });
 
   it("warns without blocking when removing Pi's global default provider", async () => {

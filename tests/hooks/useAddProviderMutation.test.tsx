@@ -54,7 +54,7 @@ function createWrapper() {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  return { wrapper };
+  return { wrapper, queryClient };
 }
 
 beforeEach(() => {
@@ -71,6 +71,35 @@ beforeEach(() => {
 });
 
 describe("useAddProviderMutation", () => {
+  it("generates a UUID for Kilo and invalidates the Kilo list", async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useAddProviderMutation("kilo"), {
+      wrapper,
+    });
+
+    const provider = await act(async () =>
+      result.current.mutateAsync({
+        name: "Volc",
+        settingsConfig: {
+          npm: "@ai-sdk/openai-compatible",
+          options: {},
+          models: {},
+        },
+      }),
+    );
+
+    expect(provider.id).toBe("generated-uuid");
+    expect(uuidMocks.generateUUID).toHaveBeenCalledTimes(1);
+    expect(apiMocks.add).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "generated-uuid", name: "Volc" }),
+      "kilo",
+      undefined,
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["providers", "kilo"],
+    });
+  });
   it("duplicates Claude Desktop official providers with a fresh id", async () => {
     const { wrapper } = createWrapper();
     const { result } = renderHook(

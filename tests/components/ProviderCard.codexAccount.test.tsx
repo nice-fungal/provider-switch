@@ -8,13 +8,19 @@ import type { Provider } from "@/types";
 import { createTestQueryClient } from "../utils/testQueryClient";
 
 const codexQuotaFooterProps = vi.hoisted(() => vi.fn());
+const healthHookSpy = vi.hoisted(() =>
+  vi.fn((..._args: unknown[]) => ({ data: undefined })),
+);
+const actionsSpy = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/providers/ProviderActions", () => ({
   ProviderActions: (props: {
     onDuplicate?: () => void;
     onConfigureUsage?: () => void;
+    onTest?: () => void;
   }) => (
     <>
+      {actionsSpy(props)}
       {props.onDuplicate ? (
         <button onClick={props.onDuplicate}>duplicate-provider</button>
       ) : null}
@@ -43,7 +49,8 @@ vi.mock("@/components/CodexOauthQuotaFooter", () => ({
 vi.mock("@/components/XaiOauthQuotaFooter", () => ({ default: () => null }));
 
 vi.mock("@/lib/query/failover", () => ({
-  useProviderHealth: () => ({ data: undefined }),
+  useProviderHealth: (providerId: string, appType: string, enabled: boolean) =>
+    healthHookSpy(providerId, appType, enabled),
 }));
 
 vi.mock("@/lib/query/queries", () => ({
@@ -94,6 +101,7 @@ function renderCard(
     isCurrent?: boolean;
     onEdit?: (provider: Provider) => void;
     onConfigureUsage?: (provider: Provider) => void;
+    appId?: "codex" | "kilo";
   } = {},
 ) {
   const queryClient = createTestQueryClient();
@@ -108,7 +116,7 @@ function renderCard(
     <QueryClientProvider client={queryClient}>
       <ProviderCard
         provider={provider}
-        appId="codex"
+        appId={options.appId ?? "codex"}
         isCurrent={options.isCurrent ?? false}
         isProxyRunning={false}
         onSwitch={vi.fn()}
@@ -123,6 +131,22 @@ function renderCard(
 }
 
 describe("ProviderCard Codex Official account identity", () => {
+  it("enables Kilo health while keeping usage configuration hidden", () => {
+    const provider: Provider = {
+      id: "volcengine",
+      name: "Volc",
+      settingsConfig: { volcengine: { options: {} } },
+    };
+    renderCard(provider, { appId: "kilo", isCurrent: true });
+
+    expect(healthHookSpy).toHaveBeenCalledWith("volcengine", "kilo", true);
+    expect(actionsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onTest: undefined,
+        onConfigureUsage: undefined,
+      }),
+    );
+  });
   it("keeps existing managed OAuth quota enabled and exposes its configuration", async () => {
     const user = userEvent.setup();
     const onConfigureUsage = vi.fn();
