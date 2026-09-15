@@ -85,6 +85,7 @@ describe("useProxyStatus", () => {
           grokbuild: false,
           opencode: false,
           openclaw: false,
+          kilo: false,
         });
       }
 
@@ -130,5 +131,32 @@ describe("useProxyStatus", () => {
 
     expect(invokeMock).toHaveBeenCalledWith("start_proxy_server");
     expect(invokeMock).toHaveBeenCalledWith("stop_proxy_server");
+  });
+
+  it("shows a not-implemented error for Kilo and never reports success", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "set_proxy_takeover_for_app") {
+        return Promise.reject(
+          new Error("NotImplemented: Kilo proxy is not implemented"),
+        );
+      }
+      return Promise.resolve(null);
+    });
+
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useProxyStatus(), { wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.setTakeoverForApp({ appType: "kilo", enabled: true }),
+      ).rejects.toThrow(/NotImplemented/);
+    });
+
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "操作失败: NotImplemented: Kilo proxy is not implemented",
+    );
+    // The takeover state is never updated to enabled on failure.
+    expect(result.current.takeoverStatus?.kilo ?? false).toBe(false);
   });
 });

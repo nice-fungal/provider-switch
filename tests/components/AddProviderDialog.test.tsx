@@ -95,6 +95,37 @@ describe("AddProviderDialog", () => {
     };
   });
 
+  it("passes Kilo's config without adding a provider key", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onOpenChange = vi.fn();
+    const settingsConfig = {
+      npm: "@ai-sdk/openai-compatible",
+      options: { apiKey: "secret" },
+      models: {},
+    };
+    mockFormValues = {
+      name: "Volc",
+      settingsConfig: JSON.stringify(settingsConfig),
+    };
+    render(
+      <AddProviderDialog
+        open
+        onOpenChange={onOpenChange}
+        appId="kilo"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "common.add" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        settingsConfig,
+      }),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("使用 ProviderForm 返回的自定义端点", async () => {
     const handleSubmit = vi.fn().mockResolvedValue(undefined);
     const handleOpenChange = vi.fn();

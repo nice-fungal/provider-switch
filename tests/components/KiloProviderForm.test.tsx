@@ -1,154 +1,118 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { ProviderForm } from "@/components/providers/forms/ProviderForm";
 import { KiloProviderForm } from "@/components/providers/forms/KiloProviderForm";
 
 describe("KiloProviderForm", () => {
-  beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn();
-  });
-
-  it("shows one read-only JSON preview without legacy fields", () => {
+  it("renders the Kilo-specific fields with the default NPM package", () => {
     render(
-      <KiloProviderForm
+      <ProviderForm
+        appId="kilo"
         submitLabel="Save"
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
-        initialData={{
-          name: "GLM provider",
-          settingsConfig: {
-            name: "legacy config name",
-            npm: "@ai-sdk/openai-compatible",
-            models: {
-              "glm-5.3": { name: "GLM-5.3" },
-            },
-            thinking: { type: "enabled" },
-            reasoning_effort: "high",
-            options: {
-              baseURL: "https://example.com/v1",
-              apiKey: "secret",
-              timeout: "600000",
-            },
-          },
-        }}
+        onSubmit={() => {}}
+        onCancel={() => {}}
       />,
     );
 
-    const preview = screen.getByLabelText("Kilo Configuration JSON");
-    expect(preview).toHaveAttribute("readonly");
-    expect(preview).toHaveValue(
-      JSON.stringify(
-        {
-          models: {
-            "glm-5.3": { name: "GLM-5.3" },
-          },
-          thinking: { type: "enabled" },
-          reasoning_effort: "high",
-          options: {
-            baseURL: "https://example.com/v1",
-            apiKey: "secret",
-            timeout: "600000",
-          },
-        },
-        null,
-        2,
-      ),
-    );
-    expect(screen.getByLabelText("API Key")).toHaveAttribute("type", "text");
-    expect(screen.queryByLabelText("NPM Package")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Provider Name")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Provider ID")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
+    expect(screen.getByLabelText("API Key")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("@ai-sdk/openai-compatible"),
+    ).toBeInTheDocument();
+    // Must not fall through to the Claude default branch.
+    expect(screen.queryByText(/ANTHROPIC_AUTH_TOKEN/)).toBeNull();
   });
 
-  it("updates the preview from the same fields that are submitted", async () => {
+  it("accepts a model id and name and exposes a reasoning toggle", async () => {
+    render(
+      <KiloProviderForm
+        submitLabel="Save"
+        onSubmit={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("glm-5.3")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("GLM-5.3")).toBeInTheDocument();
+    expect(screen.getByRole("switch")).toBeInTheDocument();
+    expect(screen.queryByText(/No models configured/)).not.toBeInTheDocument();
+  });
+
+  it("cancels without submitting", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onSubmit = vi.fn();
+    render(
+      <KiloProviderForm
+        submitLabel="Save"
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("requires the single model ID before submitting", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <KiloProviderForm
+        submitLabel="Save"
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Provider Name"), "Volc");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("submits the provider data and generated JSON", async () => {
+    const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
       <KiloProviderForm
         submitLabel="Save"
         onSubmit={onSubmit}
-        onCancel={vi.fn()}
-        initialData={{
-          name: "Provider",
-          settingsConfig: {
-            models: { old: { name: "Old" } },
-            thinking: { type: "enabled" },
-            reasoning_effort: "high",
-            options: {
-              baseURL: "https://old.example.com",
-              apiKey: "old-secret",
-            },
-          },
-        }}
+        onCancel={() => {}}
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("API Key"), {
-      target: { value: "new-secret" },
-    });
-    fireEvent.change(screen.getByLabelText("Model ID"), {
-      target: { value: "new-model" },
-    });
-    fireEvent.change(screen.getByLabelText("Model Name"), {
-      target: { value: "New Model" },
-    });
+    await user.type(screen.getByLabelText("Provider Name"), "Volc");
+    await user.type(screen.getByLabelText("Base URL"), "https://example.test/v1");
+    await user.type(screen.getByLabelText("API Key"), "secret");
+    await user.type(screen.getByLabelText("Model ID"), "glm-5.3");
+    await user.type(screen.getByLabelText("Model Name"), "GLM-5.3");
+    await user.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
-    const expectedConfig = {
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Volc",
+        settingsConfig: expect.any(String),
+      }),
+    );
+    expect(onSubmit.mock.calls[0][0].providerKey).toBeUndefined();
+    expect(onSubmit.mock.calls[0][0].icon).toBe("zai");
+    expect(JSON.parse(onSubmit.mock.calls[0][0].settingsConfig)).toEqual({
+      name: "Volc",
+      npm: "@ai-sdk/openai-compatible",
       models: {
-        "new-model": { name: "New Model" },
+        "glm-5.3": { name: "GLM-5.3", reasoning: true },
       },
-      thinking: { type: "enabled" },
-      reasoning_effort: "high",
       options: {
-        baseURL: "https://old.example.com",
-        apiKey: "new-secret",
+        baseURL: "https://example.test/v1",
+        apiKey: "secret",
       },
-    };
-    expect(screen.getByLabelText("Kilo Configuration JSON")).toHaveValue(
-      JSON.stringify(expectedConfig, null, 2),
-    );
-
-    fireEvent.submit(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "Provider",
-          settingsConfig: JSON.stringify(expectedConfig),
-        }),
-      ),
-    );
-  });
-
-  it("filters unfinished header and option rows from the saved config", () => {
-    render(
-      <KiloProviderForm
-        submitLabel="Save"
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
-        initialData={{
-          name: "Provider",
-          settingsConfig: {
-            models: { model: { name: "Model" } },
-            thinking: { type: "enabled" },
-            reasoning_effort: "high",
-            options: {
-              baseURL: "https://example.com",
-              apiKey: "secret",
-              headers: {
-                "X-Ready": "yes",
-                "": "ignored",
-                "draft-header:123": "ignored",
-              },
-              timeout: "600000",
-            },
-          },
-        }}
-      />,
-    );
-
-    const preview = JSON.parse(
-      (screen.getByLabelText("Kilo Configuration JSON") as HTMLTextAreaElement)
-        .value,
-    );
-    expect(preview.options.headers).toEqual({ "X-Ready": "yes" });
-    expect(preview.options.timeout).toBe("600000");
+    });
   });
 
   it("offers the Volcano preset when creating a new Kilo provider", () => {

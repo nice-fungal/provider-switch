@@ -311,6 +311,37 @@ describe("ProviderList Component", () => {
     ).toBeInTheDocument();
   });
 
+  it("exposes connectivity checks on Kilo provider cards", () => {
+    const provider = createProvider({
+      id: "kilo-provider",
+      name: "Kilo Provider",
+    });
+    useDragSortMock.mockReturnValue({
+      sortedProviders: [provider],
+      sensors: [],
+      handleDragEnd: vi.fn(),
+    });
+
+    renderWithQueryClient(
+      <ProviderList
+        providers={{ [provider.id]: provider }}
+        currentProviderId={provider.id}
+        appId="kilo"
+        onSwitch={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onOpenWebsite={vi.fn()}
+      />,
+    );
+
+    const latestCardProps = providerCardRenderSpy.mock.calls
+      .map(([props]) => props)
+      .filter((props) => props.provider.id === provider.id)
+      .at(-1);
+    expect(latestCardProps.onTest).toEqual(expect.any(Function));
+  });
+
   it("does not manufacture a Pi selection summary card", async () => {
     server.use(
       http.post(`${TAURI_ENDPOINT}/get_pi_current_state`, () =>
