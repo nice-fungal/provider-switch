@@ -2913,6 +2913,7 @@
       "enabled": "{{app}} 路由已啟用",
       "disabled": "{{app}} 路由已關閉",
       "failed": "切換路由狀態失敗：{{detail}}",
+      "notImplemented": "{{app}} 代理尚未實作",
       "tooltip": {
         "active": "{{appLabel}} 路由中 - {{address}}:{{port}}\n切換該應用程式供應商為熱切換",
         "broken": "{{appLabel}} 路由中，但路由服務未執行",

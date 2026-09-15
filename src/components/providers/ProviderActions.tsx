@@ -53,6 +53,8 @@ interface ProviderActionsProps {
   isOfficialBlockedByProxy?: boolean;
   // Hermes v12+ providers: dict overlay — edit/delete must go through Web UI
   isReadOnly?: boolean;
+  /** Editing and duplicating are intentionally unavailable for staged apps. */
+  isManagementDisabled?: boolean;
   // OpenClaw: default model
   isDefaultModel?: boolean;
   isRemovalProtected?: boolean;
@@ -94,6 +96,7 @@ export function ProviderActions({
   onToggleFailover,
   isOfficialBlockedByProxy = false,
   isReadOnly = false,
+  isManagementDisabled = false,
   // OpenClaw: default model
   isDefaultModel = false,
   isRemovalProtected = false,
@@ -265,9 +268,12 @@ export function ProviderActions({
       ? !isStateChangeProtected
       : isOmo || isAdditiveMode
         ? true
-        : !isCurrent);
+        : !isCurrent || isManagementDisabled);
   const readOnlyHint = t("provider.managedByHermesHint", {
     defaultValue: "由 Hermes 管理，请在 Hermes Web UI 中编辑",
+  });
+  const managementDisabledHint = t("provider.notImplemented", {
+    defaultValue: "此应用暂不支持此操作",
   });
   const deleteHint =
     appId === "pi" && isStateChangeProtected
@@ -388,19 +394,26 @@ export function ProviderActions({
         <Button
           size="icon"
           variant="ghost"
-          onClick={isReadOnly ? undefined : onEdit}
-          disabled={isReadOnly}
+          onClick={isReadOnly || isManagementDisabled ? undefined : onEdit}
+          disabled={isReadOnly || isManagementDisabled}
           aria-label={t("common.edit")}
-          title={isReadOnly ? readOnlyHint : t("common.edit")}
+          title={
+            isReadOnly
+              ? readOnlyHint
+              : isManagementDisabled
+                ? managementDisabledHint
+                : t("common.edit")
+          }
           className={cn(
             iconButtonClass,
-            isReadOnly && "opacity-40 cursor-not-allowed text-muted-foreground",
+            (isReadOnly || isManagementDisabled) &&
+              "opacity-40 cursor-not-allowed text-muted-foreground",
           )}
         >
           <Edit className="h-4 w-4" />
         </Button>
 
-        {onDuplicate && (
+        {onDuplicate && !isManagementDisabled && (
           <Button
             size="icon"
             variant="ghost"

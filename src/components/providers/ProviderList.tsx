@@ -150,7 +150,7 @@ export function ProviderList({
 
   // Only apps with an explicit local-routing capability participate in
   // failover. Additive apps such as Pi never query or render this state.
-  const supportsFailover = isProxyAppId(appId);
+  const supportsFailover = isProxyAppId(appId) && appId !== "kilo";
   const { data: isAutoFailoverEnabled } = useAutoFailoverEnabled(
     appId,
     supportsFailover,
