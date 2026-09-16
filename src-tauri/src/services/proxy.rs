@@ -1136,6 +1136,12 @@ impl ProxyService {
         // OpenCode and OpenClaw don't support proxy features, always return false
         let opencode_enabled = false;
         let openclaw_enabled = false;
+        let kilo_enabled = self
+            .db
+            .get_proxy_config_for_app("kilo")
+            .await
+            .map(|c| c.enabled)
+            .unwrap_or(false);
 
         Ok(ProxyTakeoverStatus {
             claude: claude_enabled,
@@ -1144,6 +1150,7 @@ impl ProxyService {
             grokbuild: grokbuild_enabled,
             opencode: opencode_enabled,
             openclaw: openclaw_enabled,
+            kilo: kilo_enabled,
         })
     }
 
@@ -1152,6 +1159,10 @@ impl ProxyService {
     /// - 开启：自动启动代理服务，仅接管当前 app 的 Live 配置
     /// - 关闭：仅恢复当前 app 的 Live 配置；若无其它接管，则自动停止代理服务
     pub async fn set_takeover_for_app(&self, app_type: &str, enabled: bool) -> Result<(), String> {
+        if app_type.trim().eq_ignore_ascii_case("kilo") {
+            return self.set_kilo_channel(enabled).await;
+        }
+
         let app = AppType::from_str(app_type).map_err(|e| format!("无效的应用类型: {e}"))?;
         if !app.supports_local_proxy() {
             return Err(format!("{} 不支持本地路由", app.as_str()));
@@ -1749,6 +1760,72 @@ impl ProxyService {
         }
     }
 
+    async fn set_kilo_channel(&self, enabled: bool) -> Result<(), String> {
+        let app_type = AppType::Kilo;
+        let app_type_str = app_type.as_str();
+        let _guard = self.switch_locks.lock_for_app(app_type_str).await;
+        let current_id = crate::settings::get_effective_current_provider(&self.db, &app_type)
+            .map_err(|e| format!("读取 Kilo 当前供应商失败: {e}"))?;
+
+        if enabled {
+            let current_id = current_id.ok_or_else(|| "Kilo 没有可用的当前供应商".to_string())?;
+            let provider = self
+                .db
+                .get_provider_by_id(&current_id, app_type_str)
+                .map_err(|e| format!("读取 Kilo 当前供应商失败: {e}"))?
+                .ok_or_else(|| "Kilo 当前供应商不存在".to_string())?;
+            crate::proxy::kilo::parse_provider(&provider)
+                .map_err(|e| format!("Kilo 当前供应商配置无效: {e}"))?;
+
+            if !self.is_running().await {
+                self.start().await?;
+            }
+            let mut config = self
+                .db
+                .get_proxy_config_for_app(app_type_str)
+                .await
+                .map_err(|e| format!("获取 Kilo proxy 配置失败: {e}"))?;
+            config.enabled = true;
+            self.db
+                .update_proxy_config_for_app(config)
+                .await
+                .map_err(|e| format!("启用 Kilo proxy 失败: {e}"))?;
+            if let Some(server) = self.server.read().await.as_ref() {
+                server
+                    .set_active_target(app_type_str, &provider.id, &provider.name)
+                    .await;
+            }
+            return Ok(());
+        }
+
+        let mut config = self
+            .db
+            .get_proxy_config_for_app(app_type_str)
+            .await
+            .map_err(|e| format!("获取 Kilo proxy 配置失败: {e}"))?;
+        if !config.enabled {
+            return Ok(());
+        }
+        config.enabled = false;
+        self.db
+            .update_proxy_config_for_app(config)
+            .await
+            .map_err(|e| format!("关闭 Kilo proxy 失败: {e}"))?;
+        if let Some(server) = self.server.read().await.as_ref() {
+            server.clear_active_target(app_type_str).await;
+        }
+        if !self
+            .db
+            .is_live_takeover_active()
+            .await
+            .map_err(|e| format!("检查代理启用状态失败: {e}"))?
+            && self.is_running().await
+        {
+            let _ = self.stop().await;
+        }
+        Ok(())
+    }
+
     /// 停止代理服务器（恢复 Live 配置，用户手动关闭时使用）
     ///
     /// 会清除 settings 表中的代理状态，下次启动不会自动恢复。
@@ -1768,7 +1845,7 @@ impl ProxyService {
             .map_err(|e| format!("清除接管状态失败: {e}"))?;
 
         // 4. 清除所有应用的 enabled 状态（用户手动关闭，不需要下次自动恢复）
-        for app_type in ["claude", "codex", "gemini", "grokbuild"] {
+        for app_type in ["claude", "codex", "gemini", "grokbuild", "kilo"] {
             if let Ok(mut config) = self.db.get_proxy_config_for_app(app_type).await {
                 if config.enabled {
                     config.enabled = false;
@@ -2650,7 +2727,7 @@ impl ProxyService {
     /// 检查是否处于 Live 接管模式
     pub async fn is_takeover_active(&self) -> Result<bool, String> {
         let status = self.get_takeover_status().await?;
-        Ok(status.claude || status.codex || status.gemini || status.grokbuild)
+        Ok(status.claude || status.codex || status.gemini || status.grokbuild || status.kilo)
     }
 
     /// 从异常退出中恢复（启动时调用）
@@ -2963,6 +3040,36 @@ impl ProxyService {
             .get_provider_by_id(provider_id, app_type)
             .map_err(|e| format!("读取供应商失败: {e}"))?
             .ok_or_else(|| format!("供应商不存在: {provider_id}"))?;
+
+        // Kilo is an independent OpenAI-compatible proxy app. Its provider
+        // switch only changes the persisted current provider and the shared
+        // server's active target; it must never enter the legacy Live-config
+        // backup/write/restore flow used by Claude/Codex/Grok.
+        if matches!(app_type_enum, AppType::Kilo) {
+            crate::proxy::kilo::parse_provider(&provider)
+                .map_err(|e| format!("Kilo 供应商配置无效: {e}"))?;
+            let previous_provider_id =
+                crate::settings::get_effective_current_provider(&self.db, &app_type_enum)
+                    .map_err(|e| format!("读取 Kilo 当前供应商失败: {e}"))?;
+            let logical_target_changed = previous_provider_id.as_deref() != Some(provider_id);
+            crate::settings::set_current_provider(&app_type_enum, Some(provider_id))
+                .map_err(|e| format!("更新 Kilo 当前供应商失败: {e}"))?;
+            if let Err(error) = self.db.set_current_provider(app_type, provider_id) {
+                let _ = crate::settings::set_current_provider(
+                    &app_type_enum,
+                    previous_provider_id.as_deref(),
+                );
+                return Err(format!("更新 Kilo 数据库当前供应商失败: {error}"));
+            }
+            if let Some(server) = self.server.read().await.as_ref() {
+                server
+                    .set_active_target(app_type, &provider.id, &provider.name)
+                    .await;
+            }
+            return Ok(HotSwitchOutcome {
+                logical_target_changed,
+            });
+        }
 
         // Defense-in-depth: only Codex official providers support native OpenAI
         // auth passthrough during takeover.
@@ -3409,6 +3516,26 @@ impl ProxyService {
         let app = AppType::from_str(app_type).map_err(|e| format!("无效的应用类型: {e}"))?;
         if !app.supports_local_proxy() {
             return Err(format!("{} 不支持本地路由", app.as_str()));
+        }
+        if matches!(app, AppType::Kilo) {
+            let provider = self
+                .db
+                .get_provider_by_id(provider_id, app.as_str())
+                .map_err(|e| format!("读取供应商失败: {e}"))?
+                .ok_or_else(|| format!("供应商不存在: {provider_id}"))?;
+            crate::proxy::kilo::parse_provider(&provider)
+                .map_err(|e| format!("Kilo 供应商配置无效: {e}"))?;
+            crate::settings::set_current_provider(&app, Some(provider_id))
+                .map_err(|e| format!("更新 Kilo 当前供应商失败: {e}"))?;
+            self.db
+                .set_current_provider(app.as_str(), provider_id)
+                .map_err(|e| format!("更新 Kilo 数据库当前供应商失败: {e}"))?;
+            if let Some(server) = self.server.read().await.as_ref() {
+                server
+                    .set_active_target(app.as_str(), &provider.id, &provider.name)
+                    .await;
+            }
+            return Ok(());
         }
         let outcome = self.hot_switch_provider(app_type, provider_id).await?;
 
@@ -4244,6 +4371,35 @@ mod tests {
         assert!(service.set_takeover_for_app("pi", true).await.is_err());
         assert!(!service.is_running().await);
         assert!(service.switch_proxy_target("pi", "missing").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn kilo_channel_requires_current_provider_and_has_no_live_config_side_effects() {
+        let db = Arc::new(Database::memory().expect("init db"));
+        let service = ProxyService::new(db.clone());
+
+        let enable_err = service
+            .set_takeover_for_app("kilo", true)
+            .await
+            .expect_err("kilo enable must require a provider");
+        assert!(enable_err.contains("没有可用的当前供应商"), "{enable_err}");
+
+        // A failed enable must not start the proxy or take a live-config backup.
+        assert!(!service.is_running().await);
+        assert!(db.get_live_backup("kilo").await.unwrap().is_none());
+
+        // Kilo is a real proxy app now; its row is lazily available and disabled.
+        let status = service
+            .get_takeover_status()
+            .await
+            .expect("takeover status");
+        assert!(!status.kilo);
+        assert!(db.get_proxy_config_for_app("kilo").await.unwrap().enabled == false);
+
+        service
+            .set_takeover_for_app("kilo", false)
+            .await
+            .expect("disabling an already disabled Kilo channel is idempotent");
     }
 
     async fn running_codex_base_url(service: &ProxyService) -> String {

@@ -157,6 +157,11 @@ pub(crate) fn build_provider_from_request(
                 "Pi providers must be added from the Pi provider page".to_string(),
             ));
         }
+        AppType::Kilo => {
+            return Err(AppError::InvalidInput(
+                "Kilo providers do not support deep link import yet".to_string(),
+            ));
+        }
     };
 
     // Build usage script configuration if provided

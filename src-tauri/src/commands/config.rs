@@ -146,6 +146,7 @@ pub async fn get_config_status(
                 path,
             })
         }
+        AppType::Kilo => Err("NotImplemented: Kilo config is not implemented".to_string()),
     }
 }
 
@@ -168,6 +169,7 @@ pub async fn get_config_dir(app: String) -> Result<String, String> {
         AppType::OpenClaw => crate::openclaw_config::get_openclaw_dir(),
         AppType::Hermes => crate::hermes_config::get_hermes_dir(),
         AppType::Pi => crate::pi_config::get_pi_agent_dir().map_err(|e| e.to_string())?,
+        AppType::Kilo => return Err("NotImplemented: Kilo config is not implemented".to_string()),
     };
 
     Ok(dir.to_string_lossy().to_string())
@@ -187,6 +189,7 @@ pub async fn open_config_folder(handle: AppHandle, app: String) -> Result<bool, 
         AppType::OpenClaw => crate::openclaw_config::get_openclaw_dir(),
         AppType::Hermes => crate::hermes_config::get_hermes_dir(),
         AppType::Pi => crate::pi_config::get_pi_agent_dir().map_err(|e| e.to_string())?,
+        AppType::Kilo => return Err("NotImplemented: Kilo config is not implemented".to_string()),
     };
 
     if !config_dir.exists() {

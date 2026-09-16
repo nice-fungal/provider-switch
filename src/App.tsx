@@ -226,7 +226,10 @@ function App() {
 
   // Fallback from sessions view when switching to an app without session support
   useEffect(() => {
-    if (currentView === "mcp" && sharedFeatureApp === "pi") {
+    if (
+      currentView === "mcp" &&
+      (sharedFeatureApp === "pi" || sharedFeatureApp === "kilo")
+    ) {
       setCurrentView("providers");
       return;
     }
@@ -297,6 +300,7 @@ function App() {
   const { data: piCurrentState } = usePiCurrentState(activeApp === "pi");
   const providers = useMemo(() => data?.providers ?? {}, [data]);
   const currentProviderId = data?.currentProviderId ?? "";
+  const providersLoading = isLoading;
   const isOpenClawView =
     activeApp === "openclaw" &&
     (currentView === "providers" ||
@@ -316,7 +320,8 @@ function App() {
     sharedFeatureApp === "openclaw" ||
     sharedFeatureApp === "gemini" ||
     sharedFeatureApp === "hermes" ||
-    sharedFeatureApp === "pi";
+    sharedFeatureApp === "pi" ||
+    sharedFeatureApp === "kilo";
   const hasMcpSupport = sharedFeatureApp !== "pi";
 
   const {
@@ -1104,7 +1109,7 @@ function App() {
                       providers={providers}
                       currentProviderId={currentProviderId}
                       appId={activeApp}
-                      isLoading={isLoading}
+                      isLoading={providersLoading}
                       isProxyRunning={currentAppUsesProxy && isProxyRunning}
                       isProxyTakeover={
                         isProxyRunning && isCurrentAppTakeoverActive

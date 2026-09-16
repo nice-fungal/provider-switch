@@ -116,6 +116,8 @@ pub struct ProxyTakeoverStatus {
     pub grokbuild: bool,
     pub opencode: bool,
     pub openclaw: bool,
+    /// Kilo proxy channel state, sourced from `proxy_config`.
+    pub kilo: bool,
 }
 
 /// Provider健康状态

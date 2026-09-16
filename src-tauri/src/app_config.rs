@@ -34,6 +34,7 @@ impl McpApps {
             AppType::Hermes => self.hermes,
             AppType::Pi => false, // Pi core has no native MCP registry.
             AppType::ClaudeDesktop => false,
+            AppType::Kilo => false, // Kilo has no MCP registry in this phase.
         }
     }
 
@@ -49,6 +50,7 @@ impl McpApps {
             AppType::Hermes => self.hermes = enabled,
             AppType::Pi => {}            // Pi core has no native MCP registry.
             AppType::ClaudeDesktop => {} // Claude Desktop 3P provider config doesn't support MCP here
+            AppType::Kilo => {}          // Kilo has no MCP registry in this phase.
         }
     }
 
@@ -119,6 +121,7 @@ impl SkillApps {
             AppType::Pi => self.pi,
             AppType::OpenClaw => false, // OpenClaw doesn't support Skills
             AppType::ClaudeDesktop => false,
+            AppType::Kilo => false, // Kilo doesn't support Skills in this phase.
         }
     }
 
@@ -134,6 +137,7 @@ impl SkillApps {
             AppType::Pi => self.pi = enabled,
             AppType::OpenClaw => {} // OpenClaw doesn't support Skills, ignore
             AppType::ClaudeDesktop => {} // Claude Desktop 3P profiles don't use CC Switch skill sync
+            AppType::Kilo => {}          // Kilo doesn't support Skills in this phase.
         }
     }
 
@@ -392,6 +396,7 @@ pub enum AppType {
     OpenClaw,
     Hermes,
     Pi,
+    Kilo,
 }
 
 impl AppType {
@@ -406,6 +411,7 @@ impl AppType {
             AppType::OpenClaw => "openclaw",
             AppType::Hermes => "hermes",
             AppType::Pi => "pi",
+            AppType::Kilo => "kilo",
         }
     }
 
@@ -424,7 +430,7 @@ impl AppType {
     pub fn supports_local_proxy(&self) -> bool {
         matches!(
             self,
-            AppType::Claude | AppType::Codex | AppType::Gemini | AppType::GrokBuild
+            AppType::Claude | AppType::Codex | AppType::Gemini | AppType::GrokBuild | AppType::Kilo
         )
     }
 
@@ -460,10 +466,11 @@ impl FromStr for AppType {
             "openclaw" => Ok(AppType::OpenClaw),
             "hermes" => Ok(AppType::Hermes),
             "pi" => Ok(AppType::Pi),
+            "kilo" => Ok(AppType::Kilo),
             other => Err(AppError::localized(
                 "unsupported_app",
-                format!("不支持的应用标识: '{other}'。可选值: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi。"),
-                format!("Unsupported app id: '{other}'. Allowed: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi."),
+                format!("不支持的应用标识: '{other}'。可选值: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, kilo。"),
+                format!("Unsupported app id: '{other}'. Allowed: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, kilo."),
             )),
         }
     }
@@ -504,6 +511,7 @@ impl CommonConfigSnippets {
             AppType::OpenClaw => self.openclaw.as_ref(),
             AppType::Hermes => self.hermes.as_ref(),
             AppType::Pi => None,
+            AppType::Kilo => None,
         }
     }
 
@@ -519,6 +527,7 @@ impl CommonConfigSnippets {
             AppType::OpenClaw => self.openclaw = snippet,
             AppType::Hermes => self.hermes = snippet,
             AppType::Pi => {}
+            AppType::Kilo => {}
         }
     }
 }
@@ -845,6 +854,7 @@ impl MultiAppConfig {
             // Pi was added after prompts moved to SQLite. Keeping it out of
             // this legacy config avoids a second, unused prompt state.
             AppType::Pi => return Ok(false),
+            AppType::Kilo => return Ok(false),
         };
 
         prompts.insert(id, prompt);
@@ -889,6 +899,7 @@ impl MultiAppConfig {
                 AppType::OpenClaw => continue, // OpenClaw MCP is still in development, skip
                 AppType::Hermes => continue,   // Hermes didn't exist in v3.6.x, skip
                 AppType::Pi => continue,       // Pi didn't exist in v3.6.x, skip
+                AppType::Kilo => continue,     // Kilo didn't exist in v3.6.x, skip
             };
 
             for (id, entry) in old_servers {
@@ -1019,6 +1030,12 @@ mod tests {
             AppType::ClaudeDesktop
         );
         assert_eq!(AppType::ClaudeDesktop.as_str(), "claude-desktop");
+    }
+
+    #[test]
+    fn app_type_supports_kilo() {
+        assert_eq!(AppType::Kilo.as_str(), "kilo");
+        assert_eq!("kilo".parse::<AppType>().unwrap(), AppType::Kilo);
     }
 
     struct TempHome {

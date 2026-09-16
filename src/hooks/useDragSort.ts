@@ -53,6 +53,9 @@ export function useDragSort(providers: Record<string, Provider>, appId: AppId) {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      if (appId === "kilo") {
+        return;
+      }
       const { active, over } = event;
       if (!over || active.id === over.id) {
         return;

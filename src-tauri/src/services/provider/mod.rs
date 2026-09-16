@@ -260,6 +260,83 @@ mod tests {
         })
     }
 
+    #[test]
+    #[serial]
+    fn kilo_provider_persists_with_stable_id_and_first_current() {
+        with_test_home(|state, _| {
+            let settings = json!({
+                "name": "Volc",
+                "npm": "@ai-sdk/openai-compatible",
+                "models": {"glm-5.3": {"name": "GLM-5.3"}},
+                "options": {
+                    "baseURL": "https://example.test/v1",
+                    "apiKey": "secret"
+                }
+            });
+            let provider =
+                Provider::with_id("volcengine".into(), "Volc".into(), settings.clone(), None);
+
+            assert!(ProviderService::add(state, AppType::Kilo, provider, false).unwrap());
+            let providers = ProviderService::list(state, AppType::Kilo).unwrap();
+            assert_eq!(providers["volcengine"].settings_config, settings);
+            assert_eq!(
+                ProviderService::current(state, AppType::Kilo).unwrap(),
+                "volcengine"
+            );
+
+            let second = Provider::with_id(
+                "other".into(),
+                "Other".into(),
+                json!({
+                    "name": "Other",
+                    "npm": "@ai-sdk/openai-compatible",
+                    "models": {"other-model": {"name": "Other Model"}},
+                    "options": {
+                        "baseURL": "https://other.example/v1",
+                        "apiKey": "secret-2"
+                    }
+                }),
+                None,
+            );
+            ProviderService::add(state, AppType::Kilo, second, false).unwrap();
+            assert_eq!(
+                ProviderService::current(state, AppType::Kilo).unwrap(),
+                "volcengine"
+            );
+            assert_eq!(
+                ProviderService::list(state, AppType::Kilo).unwrap().len(),
+                2
+            );
+
+            ProviderService::switch(state, AppType::Kilo, "other").unwrap();
+            assert_eq!(
+                ProviderService::current(state, AppType::Kilo).unwrap(),
+                "other"
+            );
+
+            let invalid =
+                Provider::with_id("invalid".into(), "Invalid".into(), json!("nope"), None);
+            assert!(ProviderService::add(state, AppType::Kilo, invalid, false).is_err());
+
+            ProviderService::delete(state, AppType::Kilo, "other").unwrap();
+            assert_eq!(
+                ProviderService::current(state, AppType::Kilo).unwrap(),
+                "volcengine"
+            );
+            assert!(!ProviderService::list(state, AppType::Kilo)
+                .unwrap()
+                .contains_key("other"));
+
+            ProviderService::delete(state, AppType::Kilo, "volcengine").unwrap();
+            assert!(ProviderService::current(state, AppType::Kilo)
+                .unwrap()
+                .is_empty());
+            assert!(ProviderService::list(state, AppType::Kilo)
+                .unwrap()
+                .is_empty());
+        });
+    }
+
     fn usage_script_with_credentials(
         api_key: Option<&str>,
         base_url: Option<&str>,
@@ -4575,6 +4652,20 @@ impl ProviderService {
             return pi::add(state, provider, add_to_live);
         }
 
+        // Kilo owns no native Live config. Save the provider and make the first
+        // provider current in both device settings and the database.
+        if app_type == AppType::Kilo {
+            Self::validate_provider_settings(&app_type, &provider)?;
+            state.db.save_provider(app_type.as_str(), &provider)?;
+            if state.db.get_current_provider(app_type.as_str())?.is_none() {
+                state
+                    .db
+                    .set_current_provider(app_type.as_str(), &provider.id)?;
+                crate::settings::set_current_provider(&app_type, Some(&provider.id))?;
+            }
+            return Ok(true);
+        }
+
         let mut provider = provider;
         // Normalize Claude model keys
         Self::normalize_provider_if_claude(&app_type, &mut provider);
@@ -4722,6 +4813,18 @@ impl ProviderService {
             )?;
         }
         Self::normalize_usage_script_credential_overrides(&app_type, &mut provider);
+
+        // Kilo owns no native live config. Editing a Kilo provider is a pure
+        // database update and must never enter the generic switch/live-sync path.
+        if app_type == AppType::Kilo {
+            if provider_id_changed {
+                return Err(AppError::Message(
+                    "Kilo provider ID cannot be changed after creation".to_string(),
+                ));
+            }
+            state.db.save_provider(app_type.as_str(), &provider)?;
+            return Ok(true);
+        }
 
         if provider_id_changed {
             if !app_type.is_additive_mode() {
@@ -5044,6 +5147,57 @@ impl ProviderService {
             return pi::delete(state, id);
         }
 
+        // Kilo provider deletion must not enter the native Live-config path.
+        // While the channel is enabled, the only current provider cannot be
+        // removed because that would leave the Kilo route without a target.
+        if app_type == AppType::Kilo {
+            let local_current = crate::settings::get_current_provider(&app_type);
+            let db_current = state.db.get_current_provider(app_type.as_str())?;
+            let was_current =
+                local_current.as_deref() == Some(id) || db_current.as_deref() == Some(id);
+            let proxy_enabled =
+                futures::executor::block_on(state.db.get_proxy_config_for_app(app_type.as_str()))
+                    .map(|config| config.enabled)
+                    .unwrap_or(false);
+            if proxy_enabled && was_current {
+                let provider_count = state.db.get_all_providers(app_type.as_str())?.len();
+                if provider_count <= 1 {
+                    return Err(AppError::Message(
+                        "不能删除已启用 Kilo 通道的唯一当前供应商".to_string(),
+                    ));
+                }
+            }
+
+            state.db.delete_provider(app_type.as_str(), id)?;
+
+            if was_current {
+                let next_current = state
+                    .db
+                    .get_all_providers(app_type.as_str())?
+                    .keys()
+                    .next()
+                    .cloned();
+                match next_current {
+                    Some(next_id) => {
+                        state.db.set_current_provider(app_type.as_str(), &next_id)?;
+                        crate::settings::set_current_provider(&app_type, Some(&next_id))?;
+                        if proxy_enabled {
+                            futures::executor::block_on(
+                                state
+                                    .proxy_service
+                                    .switch_proxy_target(app_type.as_str(), &next_id),
+                            )
+                            .map_err(AppError::Message)?;
+                        }
+                    }
+                    None => {
+                        crate::settings::set_current_provider(&app_type, None)?;
+                    }
+                }
+            }
+            return Ok(());
+        }
+
         // Additive mode apps - no current provider concept
         if app_type.is_additive_mode() {
             // Single DB read shared across all additive-mode sub-paths below.
@@ -5192,6 +5346,26 @@ impl ProviderService {
         let _provider = providers
             .get(id)
             .ok_or_else(|| AppError::Message(format!("供应商 {id} 不存在")))?;
+
+        // Kilo switching updates only the current markers and, while enabled,
+        // the shared proxy server's active target. It never touches Live config.
+        if app_type == AppType::Kilo {
+            let proxy_enabled =
+                futures::executor::block_on(state.db.get_proxy_config_for_app(app_type.as_str()))
+                    .map(|config| config.enabled)
+                    .unwrap_or(false);
+            state.db.set_current_provider(app_type.as_str(), id)?;
+            crate::settings::set_current_provider(&app_type, Some(id))?;
+            if proxy_enabled {
+                futures::executor::block_on(
+                    state
+                        .proxy_service
+                        .switch_proxy_target(app_type.as_str(), id),
+                )
+                .map_err(AppError::Message)?;
+            }
+            return Ok(SwitchResult::default());
+        }
 
         // OMO providers are switched through their own exclusive path.
         if matches!(app_type, AppType::OpenCode) && _provider.category.as_deref() == Some("omo") {
@@ -5787,6 +5961,7 @@ impl ProviderService {
             AppType::OpenClaw => Self::extract_openclaw_common_config(&provider.settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
             AppType::Pi => Ok(String::new()),
+            AppType::Kilo => Ok(String::new()), // Kilo doesn't use common config snippets
         }
     }
 
@@ -5805,6 +5980,7 @@ impl ProviderService {
             AppType::OpenClaw => Self::extract_openclaw_common_config(settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
             AppType::Pi => Ok(String::new()),
+            AppType::Kilo => Ok(String::new()), // Kilo doesn't use common config snippets
         }
     }
 
@@ -6573,6 +6749,17 @@ impl ProviderService {
             AppType::Pi => {
                 crate::pi_config::validate_provider_node(&provider.id, &provider.settings_config)?;
             }
+            AppType::Kilo => {
+                crate::proxy::kilo::validate_provider_settings(&provider.settings_config).map_err(
+                    |message| {
+                        AppError::localized(
+                            "provider.kilo.settings.invalid",
+                            message.clone(),
+                            message,
+                        )
+                    },
+                )?;
+            }
         }
 
         // Validate and clean UsageScript configuration (common for all app types)
@@ -6800,6 +6987,10 @@ impl ProviderService {
                     .to_string();
 
                 Ok((api_key, base_url))
+            }
+            AppType::Kilo => {
+                // Kilo has no credential extraction in this phase.
+                Ok((String::new(), String::new()))
             }
         }
     }

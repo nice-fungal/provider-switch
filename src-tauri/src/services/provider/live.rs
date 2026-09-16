@@ -531,7 +531,8 @@ fn settings_contain_common_config(app_type: &AppType, settings: &Value, snippet:
         | AppType::OpenClaw
         | AppType::Hermes
         | AppType::Pi
-        | AppType::ClaudeDesktop => false,
+        | AppType::ClaudeDesktop
+        | AppType::Kilo => false,
     }
 }
 
@@ -606,7 +607,8 @@ pub(crate) fn remove_common_config_from_settings(
         | AppType::OpenClaw
         | AppType::Hermes
         | AppType::Pi
-        | AppType::ClaudeDesktop => Ok(settings.clone()),
+        | AppType::ClaudeDesktop
+        | AppType::Kilo => Ok(settings.clone()),
     }
 }
 
@@ -666,7 +668,8 @@ fn apply_common_config_to_settings(
         | AppType::OpenClaw
         | AppType::Hermes
         | AppType::Pi
-        | AppType::ClaudeDesktop => Ok(settings.clone()),
+        | AppType::ClaudeDesktop
+        | AppType::Kilo => Ok(settings.clone()),
     }
 }
 
@@ -1435,6 +1438,11 @@ pub(crate) fn write_live_snapshot(app_type: &AppType, provider: &Provider) -> Re
                 "Pi providers use the Pi provider service".to_string(),
             ));
         }
+        AppType::Kilo => {
+            return Err(AppError::InvalidInput(
+                "Kilo has no live config in this phase".to_string(),
+            ));
+        }
     }
     Ok(())
 }
@@ -1818,6 +1826,9 @@ pub fn read_live_settings(app_type: AppType) -> Result<Value, AppError> {
         AppType::Pi => Err(AppError::InvalidInput(
             "Pi providers are read from Pi's native models file".to_string(),
         )),
+        AppType::Kilo => Err(AppError::InvalidInput(
+            "Kilo has no live config in this phase".to_string(),
+        )),
     }
 }
 
@@ -1929,6 +1940,11 @@ pub fn import_default_config(state: &AppState, app_type: AppType) -> Result<bool
         // OpenCode, OpenClaw and Hermes use additive mode and are handled by early return above
         AppType::OpenCode | AppType::OpenClaw | AppType::Hermes | AppType::Pi => {
             unreachable!("additive mode apps are handled by early return")
+        }
+        AppType::Kilo => {
+            return Err(AppError::InvalidInput(
+                "Kilo providers do not support live config import in this phase".to_string(),
+            ));
         }
     };
 

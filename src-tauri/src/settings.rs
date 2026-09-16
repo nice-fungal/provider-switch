@@ -48,6 +48,8 @@ pub struct VisibleApps {
     pub hermes: bool,
     #[serde(default = "default_true")]
     pub pi: bool,
+    #[serde(default = "default_true")]
+    pub kilo: bool,
 }
 
 impl Default for VisibleApps {
@@ -62,6 +64,7 @@ impl Default for VisibleApps {
             openclaw: true,
             hermes: false, // 默认不显示，需用户手动启用
             pi: true,
+            kilo: true,
         }
     }
 }
@@ -79,6 +82,7 @@ impl VisibleApps {
             AppType::OpenClaw => self.openclaw,
             AppType::Hermes => self.hermes,
             AppType::Pi => self.pi,
+            AppType::Kilo => self.kilo,
         }
     }
 }
@@ -459,6 +463,9 @@ pub struct AppSettings {
     /// 当前 Hermes 供应商 ID（本地存储，保持结构一致）
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_provider_hermes: Option<String>,
+    /// 当前 Kilo 供应商 ID（设备级；无效时回退到数据库 is_current）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_provider_kilo: Option<String>,
 
     // ===== Skill 同步设置 =====
     /// Skill 同步方式：auto（默认，优先 symlink）、symlink、copy
@@ -558,6 +565,7 @@ impl Default for AppSettings {
             current_provider_opencode: None,
             current_provider_openclaw: None,
             current_provider_hermes: None,
+            current_provider_kilo: None,
             skill_sync_method: SyncMethod::default(),
             skill_storage_location: SkillStorageLocation::default(),
             webdav_sync: None,
@@ -1010,6 +1018,7 @@ pub fn get_current_provider(app_type: &AppType) -> Option<String> {
         AppType::OpenClaw => settings.current_provider_openclaw.clone(),
         AppType::Hermes => settings.current_provider_hermes.clone(),
         AppType::Pi => None,
+        AppType::Kilo => settings.current_provider_kilo.clone(),
     }
 }
 
@@ -1029,6 +1038,7 @@ pub fn set_current_provider(app_type: &AppType, id: Option<&str>) -> Result<(), 
         AppType::OpenClaw => settings.current_provider_openclaw = id_owned.clone(),
         AppType::Hermes => settings.current_provider_hermes = id_owned.clone(),
         AppType::Pi => {}
+        AppType::Kilo => settings.current_provider_kilo = id_owned.clone(),
     })
 }
 
@@ -1227,5 +1237,27 @@ mod tests {
             resolve_override_path(r"~\pi\agent"),
             home.join("pi").join("agent")
         );
+    }
+
+    #[test]
+    fn visible_apps_serializes_kilo_field() {
+        let visible = VisibleApps::default();
+        let value = serde_json::to_value(&visible).expect("serialize visible apps");
+        assert_eq!(value.get("kilo"), Some(&serde_json::json!(true)));
+    }
+
+    #[test]
+    fn visible_apps_missing_kilo_defaults_visible() {
+        let visible: VisibleApps = serde_json::from_value(serde_json::json!({
+            "claude": true,
+            "codex": true,
+            "gemini": true,
+            "opencode": true,
+            "openclaw": true,
+            "hermes": true
+        }))
+        .expect("visible apps");
+
+        assert!(visible.kilo);
     }
 }

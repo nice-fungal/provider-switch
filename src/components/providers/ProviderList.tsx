@@ -418,7 +418,11 @@ export function ProviderList({
         <ProviderEmptyState
           appId={appId}
           onCreate={appId === "pi" ? undefined : onCreate}
-          onImport={appId === "pi" ? undefined : () => importMutation.mutate()}
+          onImport={
+            appId === "pi" || appId === "kilo"
+              ? undefined
+              : () => importMutation.mutate()
+          }
         />
       </div>
     );
@@ -426,7 +430,7 @@ export function ProviderList({
 
   const renderProviderList = () => (
     <DndContext
-      sensors={sensors}
+      sensors={appId === "kilo" ? [] : sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
@@ -719,11 +723,15 @@ function SortableProviderCard({
         isTesting={isTesting}
         isProxyRunning={isProxyRunning}
         isProxyTakeover={isProxyTakeover}
-        dragHandleProps={{
-          attributes,
-          listeners,
-          isDragging,
-        }}
+        dragHandleProps={
+          appId === "kilo"
+            ? undefined
+            : {
+                attributes,
+                listeners,
+                isDragging,
+              }
+        }
         isAutoFailoverEnabled={isAutoFailoverEnabled}
         failoverPriority={failoverPriority}
         isInFailoverQueue={isInFailoverQueue}
