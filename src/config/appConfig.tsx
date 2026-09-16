@@ -42,19 +42,6 @@ export const DEFAULT_VISIBLE_APPS: VisibleApps = {
   kilo: true,
 };
 
-/** App IDs shown in Skills panels (Kilo has no Skills support). */
-export type SkillsAppId = Exclude<AppId, "claude-desktop" | "kilo">;
-
-export const SKILLS_APP_IDS: SkillsAppId[] = [
-  "claude",
-  "codex",
-  "gemini",
-  "grokbuild",
-  "opencode",
-  "hermes",
-  "pi",
-];
-
 export type ProxyAppId = Extract<
   AppId,
   "claude" | "codex" | "gemini" | "grokbuild" | "kilo"
