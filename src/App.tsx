@@ -12,7 +12,6 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Book,
   Brain,
   History,
   BarChart2,
@@ -71,10 +70,6 @@ import { FailoverToggle } from "@/components/proxy/FailoverToggle";
 import { RoutingActivationBrand } from "@/components/proxy/RoutingActivationBrand";
 import UsageScriptModal from "@/components/UsageScriptModal";
 import UnifiedMcpPanel from "@/components/mcp/UnifiedMcpPanel";
-import PromptPanel, {
-  type PromptPanelHandle,
-  type PromptPrimaryAction,
-} from "@/components/prompts/PromptPanel";
 import { DeepLinkImportDialog } from "@/components/DeepLinkImportDialog";
 import { FirstRunNoticeDialog } from "@/components/FirstRunNoticeDialog";
 import { AgentsPanel } from "@/components/agents/AgentsPanel";
@@ -102,7 +97,6 @@ import {
 type View =
   | "providers"
   | "settings"
-  | "prompts"
   | "mcp"
   | "agents"
   | "universal"
@@ -135,7 +129,6 @@ const VIEW_STORAGE_KEY = "cc-switch-last-view";
 const VALID_VIEWS: View[] = [
   "providers",
   "settings",
-  "prompts",
   "mcp",
   "agents",
   "universal",
@@ -167,8 +160,6 @@ function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const [mcpManagementBusy, setMcpManagementBusy] = useState(false);
-  const [promptManagementBusy, setPromptManagementBusy] = useState(false);
-  const [promptNavigationBusy, setPromptNavigationBusy] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(VIEW_STORAGE_KEY, currentView);
@@ -235,9 +226,6 @@ function App() {
 
   useUsageCacheBridge();
 
-  const promptPanelRef = useRef<PromptPanelHandle>(null);
-  const [promptPrimaryAction, setPromptPrimaryAction] =
-    useState<PromptPrimaryAction>("prompt");
   const mcpPanelRef = useRef<any>(null);
   const addActionButtonClass =
     "bg-orange-500 hover:bg-orange-600 dark:bg-orange-500 dark:hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 dark:shadow-orange-500/40 rounded-full w-8 h-8";
@@ -587,7 +575,7 @@ function App() {
   }, [activeApp]);
 
   const currentViewRef = useRef(currentView);
-  const managementBusy = mcpManagementBusy || promptNavigationBusy;
+  const managementBusy = mcpManagementBusy;
   const managementBusyRef = useRef(false);
   managementBusyRef.current = managementBusy;
 
@@ -952,18 +940,6 @@ function App() {
               defaultTab={settingsDefaultTab}
             />
           );
-        case "prompts":
-          return (
-            <PromptPanel
-              ref={promptPanelRef}
-              open={true}
-              onOpenChange={() => setCurrentView("providers")}
-              appId={sharedFeatureApp}
-              onInteractionBlockedChange={setPromptManagementBusy}
-              onNavigationBlockedChange={setPromptNavigationBusy}
-              onPrimaryActionChange={setPromptPrimaryAction}
-            />
-          );
         case "hermesMemory":
           return <HermesMemoryPanel />;
         case "mcp":
@@ -1207,10 +1183,6 @@ function App() {
                 </Button>
                 <h1 className="text-lg font-semibold">
                   {currentView === "settings" && t("settings.title")}
-                  {currentView === "prompts" &&
-                    t("prompts.title", {
-                      appName: t(`apps.${sharedFeatureApp}`),
-                    })}
                   {currentView === "mcp" && t("mcp.unifiedPanel.title")}
                   {currentView === "agents" && t("agents.title")}
                   {currentView === "universal" &&
@@ -1320,22 +1292,6 @@ function App() {
                 className="flex shrink-0 items-center gap-1.5"
                 style={{ WebkitAppRegion: "no-drag" } as any}
               >
-                {currentView === "prompts" && promptPrimaryAction && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={promptManagementBusy}
-                    onClick={() => promptPanelRef.current?.openAdd()}
-                    className="hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {t(
-                      promptPrimaryAction === "template"
-                        ? "pi.prompts.newTemplate"
-                        : "prompts.add",
-                    )}
-                  </Button>
-                )}
                 {currentView === "mcp" && (
                   <>
                     <Button
@@ -1462,15 +1418,6 @@ function App() {
                             </>
                           ) : (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setCurrentView("prompts")}
-                                className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                title={t("prompts.manage")}
-                              >
-                                <Book className="w-4 h-4" />
-                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
