@@ -918,6 +918,25 @@
     "pi": "Pi",
     "kilo": "Kilo"
   },
+  "kilo": {
+    "form": {
+      "configPreview": "Kilo 設定 JSON",
+      "providerName": "供應商名稱",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key",
+      "models": "模型",
+      "modelId": "模型 ID",
+      "modelName": "模型名稱",
+      "requestBody": "請求本文",
+      "thinkingType": "Thinking 類型",
+      "reasoningEffort": "Reasoning Effort",
+      "extraOptions": "額外選項",
+      "noExtraOptions": "尚未設定額外選項",
+      "optionKey": "選項鍵",
+      "optionValue": "選項值",
+      "removeOption": "刪除選項"
+    }
+  },
   "pi": {
     "empty": {
       "title": "尚未新增 API Key 供應商",

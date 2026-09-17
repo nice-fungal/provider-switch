@@ -917,6 +917,25 @@
     "pi": "Pi",
     "kilo": "Kilo"
   },
+  "kilo": {
+    "form": {
+      "configPreview": "Kilo Configuration JSON",
+      "providerName": "Provider Name",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key",
+      "models": "Model",
+      "modelId": "Model ID",
+      "modelName": "Model Name",
+      "requestBody": "Request Body",
+      "thinkingType": "Thinking Type",
+      "reasoningEffort": "Reasoning Effort",
+      "extraOptions": "Options",
+      "noExtraOptions": "No extra options configured",
+      "optionKey": "Option Key",
+      "optionValue": "Option Value",
+      "removeOption": "Remove option"
+    }
+  },
   "pi": {
     "empty": {
       "title": "No API key providers yet",

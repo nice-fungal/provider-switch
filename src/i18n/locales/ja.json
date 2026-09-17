@@ -917,6 +917,25 @@
     "pi": "Pi",
     "kilo": "Kilo"
   },
+  "kilo": {
+    "form": {
+      "configPreview": "Kilo 設定 JSON",
+      "providerName": "プロバイダー名",
+      "baseUrl": "ベース URL",
+      "apiKey": "API キー",
+      "models": "モデル",
+      "modelId": "モデル ID",
+      "modelName": "モデル名",
+      "requestBody": "リクエストボディ",
+      "thinkingType": "Thinking タイプ",
+      "reasoningEffort": "Reasoning Effort",
+      "extraOptions": "追加オプション",
+      "noExtraOptions": "追加オプションは未設定です",
+      "optionKey": "オプションキー",
+      "optionValue": "オプション値",
+      "removeOption": "オプションを削除"
+    }
+  },
   "pi": {
     "empty": {
       "title": "API キープロバイダーはまだありません",
