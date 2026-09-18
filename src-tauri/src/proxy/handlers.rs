@@ -38,7 +38,8 @@ use super::{
     response_processor::{
         create_logged_passthrough_stream, create_usage_collector, process_response,
         read_decoded_body, strip_entity_headers_for_rebuilt_body,
-        strip_hop_by_hop_response_headers, usage_logging_enabled, SseUsageCollector,
+        strip_hop_by_hop_response_headers, usage_logging_enabled, ResponseContext,
+        SseUsageCollector,
     },
     server::ProxyState,
     sse::{strip_sse_field, take_sse_block},
@@ -258,12 +259,14 @@ async fn handle_messages_for_app(
     }
 
     // 通用响应处理（透传模式）
+    let response_ctx = ResponseContext::from_request(&ctx);
     process_response(
         response,
-        &ctx,
+        &response_ctx,
         &state,
         &CLAUDE_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
@@ -813,13 +816,15 @@ pub async fn handle_chat_completions(
     ctx.outbound_model = result.outbound_model.take();
     ctx.provider = result.provider;
     let response = result.response;
+    let response_ctx = ResponseContext::from_request(&ctx);
 
     process_response(
         response,
-        &ctx,
+        &response_ctx,
         &state,
         &OPENAI_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
@@ -947,12 +952,14 @@ async fn handle_responses_for_app(
         .await;
     }
 
+    let response_ctx = ResponseContext::from_request(&ctx);
     process_response(
         response,
-        &ctx,
+        &response_ctx,
         &state,
         &CODEX_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
@@ -1049,12 +1056,14 @@ async fn handle_codex_standalone_passthrough(
     ctx.outbound_model = result.outbound_model.take();
     ctx.provider = result.provider;
 
+    let response_ctx = ResponseContext::from_request(&ctx);
     process_response(
         result.response,
-        &ctx,
+        &response_ctx,
         &state,
         &CODEX_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
@@ -1168,12 +1177,14 @@ async fn handle_responses_compact_for_app(
         .await;
     }
 
+    let response_ctx = ResponseContext::from_request(&ctx);
     process_response(
         response,
-        &ctx,
+        &response_ctx,
         &state,
         &CODEX_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
@@ -1193,13 +1204,21 @@ async fn handle_codex_xai_native_responses_rewrite(
     >,
 ) -> Result<axum::response::Response, ProxyError> {
     let status = response.status();
+    let response_ctx = ResponseContext::from_request(ctx);
 
     // Error bodies (and any non-SSE, non-success response) never contain
     // restorable function calls; hand them to the generic passthrough so error
     // shape and usage handling stay identical to the untransformed path.
     if !status.is_success() {
-        return process_response(response, ctx, state, &CODEX_PARSER_CONFIG, connection_guard)
-            .await;
+        return process_response(
+            response,
+            &response_ctx,
+            state,
+            &CODEX_PARSER_CONFIG,
+            connection_guard,
+            &ctx.provider.id,
+        )
+        .await;
     }
 
     if response.is_sse() {
@@ -1216,13 +1235,18 @@ async fn handle_codex_xai_native_responses_rewrite(
                 response.bytes_stream(),
                 restore_map,
             );
-        let usage_collector =
-            create_usage_collector(ctx, state, status.as_u16(), &CODEX_PARSER_CONFIG);
+        let usage_collector = create_usage_collector(
+            &response_ctx,
+            state,
+            status.as_u16(),
+            &CODEX_PARSER_CONFIG,
+            &ctx.provider.id,
+        );
         let logged_stream = create_logged_passthrough_stream(
             restore_stream,
             ctx.tag,
             usage_collector,
-            ctx.streaming_timeout_config(),
+            response_ctx.streaming_timeout,
             connection_guard,
         );
 
@@ -2142,12 +2166,14 @@ pub async fn handle_gemini(
     ctx.provider = result.provider;
     let response = result.response;
 
+    let response_ctx = ResponseContext::from_request(&ctx);
     process_response(
         response,
-        &ctx,
+        &response_ctx,
         &state,
         &GEMINI_PARSER_CONFIG,
         connection_guard,
+        &ctx.provider.id,
     )
     .await
 }
