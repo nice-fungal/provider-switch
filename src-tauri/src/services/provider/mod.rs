@@ -268,6 +268,8 @@ mod tests {
                 "name": "Volc",
                 "npm": "@ai-sdk/openai-compatible",
                 "models": {"glm-5.3": {"name": "GLM-5.3"}},
+                "thinking": {"type": "enabled"},
+                "reasoning_effort": "high",
                 "options": {
                     "baseURL": "https://example.test/v1",
                     "apiKey": "secret"
@@ -291,6 +293,8 @@ mod tests {
                     "name": "Other",
                     "npm": "@ai-sdk/openai-compatible",
                     "models": {"other-model": {"name": "Other Model"}},
+                    "thinking": {"type": "enabled"},
+                    "reasoning_effort": "high",
                     "options": {
                         "baseURL": "https://other.example/v1",
                         "apiKey": "secret-2"
