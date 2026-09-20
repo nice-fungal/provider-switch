@@ -710,6 +710,27 @@ mod tests {
     }
 
     #[test]
+    fn validates_volcano_kilo_preset_shape() {
+        // 火山 preset 模板 + 用户填写的 API Key 后生成的最终 JSON。
+        // 模板本身（apiKey 为空）会被拒绝，密钥必须由用户提供。
+        let mut template = json!({
+            "models": {
+                "glm-5.3": {"name": "GLM-5.3"}
+            },
+            "thinking": {"type": "enabled"},
+            "reasoning_effort": "high",
+            "options": {
+                "baseURL": "https://ark.cn-beijing.volces.com/api/coding/v3",
+                "apiKey": ""
+            }
+        });
+        assert!(validate_provider_settings(&template).is_err());
+
+        template["options"]["apiKey"] = json!("volc-secret");
+        validate_provider_settings(&template).expect("valid Volcano Kilo preset");
+    }
+
+    #[test]
     fn parses_configured_reasoning_request_overrides() {
         let provider = Provider::with_id(
             "provider".to_string(),

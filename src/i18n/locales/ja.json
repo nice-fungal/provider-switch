@@ -933,7 +933,8 @@
       "noExtraOptions": "追加オプションは未設定です",
       "optionKey": "オプションキー",
       "optionValue": "オプション値",
-      "removeOption": "オプションを削除"
+      "removeOption": "オプションを削除",
+      "getApiKey": "API Key を取得"
     }
   },
   "pi": {

@@ -934,7 +934,8 @@
       "noExtraOptions": "尚未設定額外選項",
       "optionKey": "選項鍵",
       "optionValue": "選項值",
-      "removeOption": "刪除選項"
+      "removeOption": "刪除選項",
+      "getApiKey": "取得 API Key"
     }
   },
   "pi": {

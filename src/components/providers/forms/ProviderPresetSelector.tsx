@@ -21,6 +21,7 @@ import type { OpenCodeProviderPreset } from "@/config/opencodeProviderPresets";
 import type { OpenClawProviderPreset } from "@/config/openclawProviderPresets";
 import type { HermesProviderPreset } from "@/config/hermesProviderPresets";
 import type { PiProviderPreset } from "@/config/piProviderPresets";
+import type { KiloProviderPreset } from "@/config/kiloProviderPresets";
 import type { ProviderCategory } from "@/types";
 import {
   universalProviderPresets,
@@ -46,7 +47,8 @@ export type AnyPreset =
   | OpenCodeProviderPreset
   | OpenClawProviderPreset
   | HermesProviderPreset
-  | PiProviderPreset;
+  | PiProviderPreset
+  | KiloProviderPreset;
 
 export type PresetEntry = {
   id: string;
@@ -150,6 +152,8 @@ interface ProviderPresetSelectorProps {
   onManageUniversalProviders?: () => void;
   category?: ProviderCategory; // 当前选中的分类
   categoryHint?: ReactNode;
+  // “自定义配置”按钮放在 preset 之后（默认在最前）
+  customPresetLast?: boolean;
 }
 
 export function ProviderPresetSelector({
@@ -161,6 +165,7 @@ export function ProviderPresetSelector({
   onManageUniversalProviders,
   category,
   categoryHint,
+  customPresetLast = false,
 }: Readonly<ProviderPresetSelectorProps>) {
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -260,6 +265,21 @@ export function ProviderPresetSelector({
         : PresetSortMode.Original,
     );
   };
+
+  const customPresetButton = (
+    <button
+      type="button"
+      onClick={() => onPresetChange("custom")}
+      className={`inline-flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full ${
+        selectedPresetId === "custom"
+          ? "bg-blue-500 text-white dark:bg-blue-600"
+          : "bg-accent text-muted-foreground hover:bg-accent/80"
+      }`}
+    >
+      <span className="inline-block w-4 h-4 flex-shrink-0" aria-hidden />
+      <span className="truncate">{t("providerPreset.custom")}</span>
+    </button>
+  );
 
   const renderPresetIcon = (preset: AnyPreset) => {
     if (preset.icon) {
@@ -395,18 +415,7 @@ export function ProviderPresetSelector({
         </div>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
-        <button
-          type="button"
-          onClick={() => onPresetChange("custom")}
-          className={`inline-flex items-center justify-start gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full ${
-            selectedPresetId === "custom"
-              ? "bg-blue-500 text-white dark:bg-blue-600"
-              : "bg-accent text-muted-foreground hover:bg-accent/80"
-          }`}
-        >
-          <span className="inline-block w-4 h-4 flex-shrink-0" aria-hidden />
-          <span className="truncate">{t("providerPreset.custom")}</span>
-        </button>
+        {!customPresetLast && customPresetButton}
 
         {visiblePresetEntries.length === 0 && (
           <div className="col-span-full rounded-md border border-dashed border-border-default px-3 py-2 text-xs text-muted-foreground">
@@ -453,6 +462,8 @@ export function ProviderPresetSelector({
             </button>
           );
         })}
+
+        {customPresetLast && customPresetButton}
       </div>
 
       {onUniversalPresetSelect && universalProviderPresets.length > 0 && (
