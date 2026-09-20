@@ -187,51 +187,6 @@ export const openclawProviderPresets: OpenClawProviderPreset[] = [
   },
 
   {
-    name: "PackyCode",
-    websiteUrl: "https://www.packyapi.ai",
-    apiKeyUrl: "https://www.packyapi.ai/register?aff=cc-switch",
-    settingsConfig: {
-      baseUrl: "https://www.packyapi.ai",
-      apiKey: "",
-      api: "anthropic-messages",
-      models: [
-        {
-          id: "claude-opus-5",
-          name: "Claude Opus 5",
-          contextWindow: 1000000,
-          cost: { input: 5, output: 25 },
-        },
-        {
-          id: "claude-sonnet-5",
-          name: "Claude Sonnet 5",
-          contextWindow: 1000000,
-          cost: { input: 3, output: 15 },
-        },
-      ],
-    },
-    category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "packycode",
-    icon: "packycode",
-    templateValues: {
-      apiKey: {
-        label: "API Key",
-        placeholder: "",
-        editorValue: "",
-      },
-    },
-    suggestedDefaults: {
-      model: {
-        primary: "packycode/claude-opus-5",
-        fallbacks: ["packycode/claude-sonnet-5"],
-      },
-      modelCatalog: {
-        "packycode/claude-opus-5": { alias: "Opus" },
-        "packycode/claude-sonnet-5": { alias: "Sonnet" },
-      },
-    },
-  },
-  {
     name: "ZetaAPI",
     websiteUrl: "https://zetaapi.ai",
     apiKeyUrl: "https://zetaapi.ai/go/u117",
@@ -687,55 +642,6 @@ export const openclawProviderPresets: OpenClawProviderPreset[] = [
         "apikeyfun/claude-opus-5": { alias: "Opus" },
         "apikeyfun/claude-sonnet-5": { alias: "Sonnet" },
         "apikeyfun/claude-haiku-4-5": { alias: "Haiku" },
-      },
-    },
-  },
-  {
-    name: "9527CODE",
-    websiteUrl: "https://9527.codes",
-    apiKeyUrl: "https://9527.codes/register?aff=e5zI",
-    settingsConfig: {
-      baseUrl: "https://9527.codes",
-      apiKey: "",
-      api: "anthropic-messages",
-      models: [
-        {
-          id: "claude-opus-5",
-          name: "Claude Opus 5",
-          contextWindow: 1000000,
-        },
-        {
-          id: "claude-sonnet-5",
-          name: "Claude Sonnet 5",
-          contextWindow: 1000000,
-        },
-        {
-          id: "claude-haiku-4-5",
-          name: "Claude Haiku 4.5",
-          contextWindow: 200000,
-        },
-      ],
-    },
-    category: "aggregator",
-    isPartner: true,
-    partnerPromotionKey: "9527code",
-    icon: "9527code",
-    templateValues: {
-      apiKey: {
-        label: "API Key",
-        placeholder: "",
-        editorValue: "",
-      },
-    },
-    suggestedDefaults: {
-      model: {
-        primary: "9527code/claude-opus-5",
-        fallbacks: ["9527code/claude-sonnet-5"],
-      },
-      modelCatalog: {
-        "9527code/claude-opus-5": { alias: "Opus" },
-        "9527code/claude-sonnet-5": { alias: "Sonnet" },
-        "9527code/claude-haiku-4-5": { alias: "Haiku" },
       },
     },
   },

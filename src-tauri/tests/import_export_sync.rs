@@ -1016,56 +1016,6 @@ fn create_backup_retains_only_latest_entries() {
 }
 
 #[test]
-fn sync_gemini_packycode_sets_security_selected_type() {
-    let _guard = test_mutex().lock().expect("acquire test mutex");
-    reset_test_fs();
-    let home = ensure_test_home();
-
-    let mut config = MultiAppConfig::default();
-    {
-        let manager = config
-            .get_manager_mut(&AppType::Gemini)
-            .expect("gemini manager");
-        manager.current = "packy-1".to_string();
-        manager.providers.insert(
-            "packy-1".to_string(),
-            Provider::with_id(
-                "packy-1".to_string(),
-                "PackyCode".to_string(),
-                json!({
-                    "env": {
-                        "GEMINI_API_KEY": "pk-key",
-                        "GOOGLE_GEMINI_BASE_URL": "https://api-slb.packyapi.com"
-                    }
-                }),
-                Some("https://www.packyapi.com".to_string()),
-            ),
-        );
-    }
-
-    ConfigService::sync_current_providers_to_live(&mut config)
-        .expect("syncing gemini live should succeed");
-
-    // security field is written to ~/.gemini/settings.json, not ~/.cc-switch/settings.json
-    let gemini_settings = home.join(".gemini").join("settings.json");
-    assert!(
-        gemini_settings.exists(),
-        "Gemini settings.json should exist at {}",
-        gemini_settings.display()
-    );
-
-    let raw = std::fs::read_to_string(&gemini_settings).expect("read gemini settings.json");
-    let value: serde_json::Value = serde_json::from_str(&raw).expect("parse gemini settings.json");
-    assert_eq!(
-        value
-            .pointer("/security/auth/selectedType")
-            .and_then(|v| v.as_str()),
-        Some("gemini-api-key"),
-        "syncing PackyCode Gemini should enforce security.auth.selectedType in Gemini settings"
-    );
-}
-
-#[test]
 fn sync_gemini_google_official_sets_oauth_security() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();

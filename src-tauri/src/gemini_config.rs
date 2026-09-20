@@ -313,7 +313,7 @@ pub fn validate_gemini_settings(settings: &Value) -> Result<(), AppError> {
 /// 严格验证 Gemini 配置（要求必需字段）
 ///
 /// 此函数在切换供应商时使用，确保配置包含所有必需的字段。
-/// 对于需要 API Key 的供应商（如 PackyCode），会验证 GEMINI_API_KEY 字段。
+/// 对于需要 API Key 的供应商，会验证 GEMINI_API_KEY 字段。
 pub fn validate_gemini_settings_strict(settings: &Value) -> Result<(), AppError> {
     // 先做基础格式验证（包含 env/config 类型）
     validate_gemini_settings(settings)?;
@@ -396,7 +396,7 @@ fn update_selected_type(selected_type: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-/// 为 Packycode Gemini 供应商写入 settings.json
+/// 为使用 API Key 的 Gemini 供应商写入 settings.json
 ///
 /// 设置 `~/.gemini/settings.json` 中的：
 /// ```json
@@ -410,7 +410,7 @@ fn update_selected_type(selected_type: &str) -> Result<(), AppError> {
 /// ```
 ///
 /// 保留文件中的其他所有字段。
-pub fn write_packycode_settings() -> Result<(), AppError> {
+pub fn write_gemini_api_key_settings() -> Result<(), AppError> {
     update_selected_type("gemini-api-key")
 }
 
@@ -581,8 +581,8 @@ KEY_WITH-DASH=value";
     }
 
     #[test]
-    fn test_packycode_settings_structure() {
-        // 验证 Packycode settings.json 的结构正确
+    fn test_gemini_api_key_settings_structure() {
+        // 验证 Gemini API key settings.json 的结构正确
         let settings_content = serde_json::json!({
             "security": {
                 "auth": {
@@ -598,7 +598,7 @@ KEY_WITH-DASH=value";
     }
 
     #[test]
-    fn test_packycode_settings_merge() {
+    fn test_gemini_api_key_settings_merge() {
         // 测试合并逻辑：应该保留其他字段
         let mut existing_settings = serde_json::json!({
             "otherField": "should-be-kept",

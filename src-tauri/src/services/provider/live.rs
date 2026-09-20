@@ -2070,7 +2070,7 @@ pub(crate) fn write_gemini_live(provider: &Provider) -> Result<(), AppError> {
             // Write user's env vars as-is (e.g. GEMINI_MODEL, custom vars).
             write_gemini_env_atomic(&env_map)?;
         }
-        GeminiAuthType::Packycode | GeminiAuthType::Generic => {
+        GeminiAuthType::Generic => {
             // API Key mode -- require GEMINI_API_KEY
             validate_gemini_settings_strict(&provider.settings_config)?;
             write_gemini_env_atomic(&env_map)?;
@@ -2086,8 +2086,8 @@ pub(crate) fn write_gemini_live(provider: &Provider) -> Result<(), AppError> {
     // - All others: API Key mode
     match auth_type {
         GeminiAuthType::GoogleOfficial => ensure_google_oauth_security_flag(provider)?,
-        GeminiAuthType::Packycode | GeminiAuthType::Generic => {
-            crate::gemini_config::write_packycode_settings()?;
+        GeminiAuthType::Generic => {
+            crate::gemini_config::write_gemini_api_key_settings()?;
         }
     }
 
