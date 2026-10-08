@@ -58,7 +58,7 @@ describe("useSettingsForm Hook", () => {
     expect(changeLanguageSpy).toHaveBeenCalledWith("en");
   });
 
-  it("should support japanese language preference from server data", async () => {
+  it("should fall back to the default language when server data is not supported", async () => {
     useSettingsQueryMock.mockReturnValue({
       data: {
         showInTray: true,
@@ -74,34 +74,24 @@ describe("useSettingsForm Hook", () => {
     const { result } = renderHook(() => useSettingsForm());
 
     await waitFor(() => {
-      expect(result.current.settings?.language).toBe("ja");
+      expect(result.current.settings?.language).toBe("zh");
     });
 
-    expect(result.current.initialLanguage).toBe("ja");
-    expect(changeLanguageSpy).toHaveBeenCalledWith("ja");
+    expect(result.current.initialLanguage).toBe("zh");
+    expect(changeLanguageSpy).not.toHaveBeenCalledWith("ja");
   });
 
-  it("should support traditional chinese language preference aliases", async () => {
+  it("should ignore unsupported persisted language in readPersistedLanguage", () => {
     useSettingsQueryMock.mockReturnValue({
-      data: {
-        showInTray: true,
-        minimizeToTrayOnClose: true,
-        enableClaudePluginIntegration: false,
-        claudeConfigDir: "/Users/demo",
-        codexConfigDir: null,
-        language: "zh-Hant",
-      },
+      data: null,
       isLoading: false,
     });
+    window.localStorage.setItem("language", "zh-TW");
 
     const { result } = renderHook(() => useSettingsForm());
 
-    await waitFor(() => {
-      expect(result.current.settings?.language).toBe("zh-TW");
-    });
-
-    expect(result.current.initialLanguage).toBe("zh-TW");
-    expect(changeLanguageSpy).toHaveBeenCalledWith("zh-TW");
+    const lang = result.current.readPersistedLanguage();
+    expect(lang).toBe("zh");
   });
 
   it("should prioritize reading language from local storage in readPersistedLanguage", () => {

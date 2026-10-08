@@ -13,9 +13,7 @@ import {
 import { SubscriptionQuotaView } from "@/components/SubscriptionQuotaFooter";
 import type { QuotaTier, SubscriptionQuota } from "@/types/subscription";
 import zh from "@/i18n/locales/zh.json";
-import zhTW from "@/i18n/locales/zh-TW.json";
 import en from "@/i18n/locales/en.json";
-import ja from "@/i18n/locales/ja.json";
 
 const i18n = createInstance();
 const now = Date.parse("2026-09-09T12:00:00Z");
@@ -25,9 +23,7 @@ beforeAll(async () => {
     lng: "zh",
     resources: {
       zh: { translation: zh },
-      "zh-TW": { translation: zhTW },
       en: { translation: en },
-      ja: { translation: ja },
     },
     interpolation: { escapeValue: false },
   });
@@ -108,13 +104,9 @@ describe("Claude Fable subscription quota", () => {
     expect(screen.queryByText(/Fable/)).not.toBeInTheDocument();
   });
 
-  it.each([
-    ["zh-TW", "Fable:"],
-    ["en", "Fable:"],
-    ["ja", "Fable:"],
-  ])("localizes the Fable label in %s", async (language, label) => {
-    await i18n.changeLanguage(language);
+  it("localizes the Fable label in en", async () => {
+    await i18n.changeLanguage("en");
     renderQuota([{ name: "seven_day_fable", utilization: 37, resetsAt: null }]);
-    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText("Fable:")).toBeInTheDocument();
   });
 });
