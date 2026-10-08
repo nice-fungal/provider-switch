@@ -103,6 +103,14 @@ rquickjs = { version = "0.8", features = ["bindgen"] }
 objc2 = "0.5"
 objc2-app-kit = { version = "0.2", features = ["NSColor"] }
 
+# Agent 为主的工作流：不打断点，只依赖 panic backtrace 的文件名+行号定位失败
+[profile.dev]
+debug = "line-tables-only"
+
+# 依赖开优化加速测试执行；自身 crate 保持 opt-level = 0 以保留增量编译速度
+[profile.dev.package."*"]
+opt-level = 2
+
 # Optimize release binary size to help reduce AppImage footprint
 [profile.release]
 codegen-units = 1
