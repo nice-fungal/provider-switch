@@ -1157,8 +1157,7 @@ pub fn run() {
 
                 initialize_common_config_snippets(&state);
 
-                // 定下各应用的直连 / 代理模式（处理旧版遗留的接管状态），再把代理模式的
-                // 应用接上。要排在通用配置片段的自动提取之后：它读的是直连的 live。
+                // 按 live-state.json 接上代理模式的应用。排在通用配置片段的自动提取之后。
                 crate::mode::controller::startup(&state).await;
 
                 // Periodic backup check (on startup)

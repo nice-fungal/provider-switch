@@ -254,6 +254,7 @@ impl Database {
                 "codex" => (3, 60, 120, 4, 2, 60, 0.6, 10),
                 "gemini" => (5, 60, 120, 4, 2, 60, 0.6, 10),
                 "grokbuild" => (3, 60, 120, 4, 2, 60, 0.6, 10),
+                "kilo" => (3, 60, 120, 4, 2, 60, 0.6, 10),
                 _ => (3, 60, 120, 4, 2, 60, 0.6, 10), // 默认值
             };
 
@@ -296,6 +297,17 @@ impl Database {
                 circuit_failure_threshold, circuit_success_threshold, circuit_timeout_seconds,
                 circuit_error_rate_threshold, circuit_min_requests
             ) VALUES ('claude', 6, 90, 180, 600, 8, 3, 90, 0.7, 15)",
+            [],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        conn.execute(
+            "INSERT OR IGNORE INTO proxy_config (
+                app_type, max_retries,
+                streaming_first_byte_timeout, streaming_idle_timeout, non_streaming_timeout,
+                circuit_failure_threshold, circuit_success_threshold, circuit_timeout_seconds,
+                circuit_error_rate_threshold, circuit_min_requests
+            ) VALUES ('kilo', 3, 60, 120, 600, 4, 2, 60, 0.6, 10)",
             [],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -359,7 +371,6 @@ impl Database {
                         max_retries: row.get::<_, i32>(2)? as u8,
                         request_timeout: 600, // 废弃字段，返回默认值
                         enable_logging: row.get::<_, i32>(3)? != 0,
-                        live_takeover_active: false, // 废弃字段
                         streaming_first_byte_timeout: row.get::<_, i32>(4).unwrap_or(60) as u64,
                         streaming_idle_timeout: row.get::<_, i32>(5).unwrap_or(120) as u64,
                         non_streaming_timeout: row.get::<_, i32>(6).unwrap_or(600) as u64,
@@ -408,45 +419,6 @@ impl Database {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
-    }
-
-    /// 设置 Live 接管状态（兼容旧版本，更新 enabled 字段）
-    pub async fn set_live_takeover_active(&self, _active: bool) -> Result<(), AppError> {
-        // 不再使用此字段，由 enabled 字段替代
-        // 保留空实现以兼容旧代码
-        Ok(())
-    }
-
-    /// 检查是否处于 Live 接管模式
-    ///
-    /// 检查是否有任一 app 的 enabled = true
-    pub async fn is_live_takeover_active(&self) -> Result<bool, AppError> {
-        let conn = lock_conn!(self.conn);
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM proxy_config WHERE enabled = 1",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(|e| AppError::Database(e.to_string()))?;
-        Ok(count > 0)
-    }
-
-    /// 同步版本：检查是否有任一 app 的 enabled = true
-    ///
-    /// 用于 `ProfileService::apply` 等 sync 路径判断是否需要停止代理服务。
-    pub fn is_live_takeover_active_sync(&self) -> bool {
-        let conn = match self.conn.lock() {
-            Ok(c) => c,
-            Err(_) => return false,
-        };
-        conn.query_row(
-            "SELECT COUNT(*) FROM proxy_config WHERE enabled = 1",
-            [],
-            |row| row.get::<_, i64>(0),
-        )
-        .unwrap_or(0)
-            > 0
     }
 
     // ==================== Provider Health ====================

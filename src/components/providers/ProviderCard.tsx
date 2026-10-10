@@ -728,6 +728,7 @@ export function ProviderCard({
                   : undefined
               }
               onConfigureUsage={
+                appId === "kilo" ||
                 (isOfficial && !supportsOfficialSubscription) ||
                 isCopilot ||
                 (isCodexOauth && !isBoundCodexOfficial) ||

@@ -897,7 +897,8 @@
     "openclaw": "OpenClaw",
     "hermes": "Hermes",
     "pi": "Pi",
-    "mcode": "MiniMax Code"
+    "mcode": "MiniMax Code",
+    "kilo": "Kilo"
   },
   "mcode": {
     "empty": {

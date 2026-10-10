@@ -27,6 +27,7 @@ export const APP_IDS: AppId[] = [
   "hermes",
   "pi",
   "mcode",
+  "kilo",
 ];
 
 export const DEFAULT_VISIBLE_APPS: VisibleApps = {
@@ -40,11 +41,12 @@ export const DEFAULT_VISIBLE_APPS: VisibleApps = {
   hermes: true,
   pi: true,
   mcode: true,
+  kilo: true,
 };
 
 export type ProxyAppId = Extract<
   AppId,
-  "claude" | "codex" | "gemini" | "grokbuild"
+  "claude" | "codex" | "gemini" | "grokbuild" | "kilo"
 >;
 
 /** Apps with a complete local gateway + failover data plane. */
@@ -53,6 +55,7 @@ export const PROXY_APP_IDS: ProxyAppId[] = [
   "codex",
   "gemini",
   "grokbuild",
+  "kilo",
 ];
 
 export function isProxyAppId(appId: string): appId is ProxyAppId {
@@ -61,7 +64,7 @@ export function isProxyAppId(appId: string): appId is ProxyAppId {
 
 export type AdditiveAppId = Extract<
   AppId,
-  "opencode" | "openclaw" | "hermes" | "pi" | "mcode"
+  "opencode" | "openclaw" | "hermes" | "pi" | "mcode" | "kilo"
 >;
 
 export const ADDITIVE_APP_IDS: AdditiveAppId[] = [
@@ -92,7 +95,10 @@ export function usesEditorView(appId: AppId): boolean {
 }
 
 /** Pi has no native MCP registry; do not manufacture a disabled mirror. */
-export type McpAppId = Exclude<AppId, "claude-desktop" | "openclaw" | "pi">;
+export type McpAppId = Exclude<
+  AppId,
+  "claude-desktop" | "openclaw" | "pi" | "kilo"
+>;
 export const MCP_APP_IDS: McpAppId[] = [
   "claude",
   "codex",
@@ -207,6 +213,14 @@ export const APP_ICON_MAP: Record<AppId, AppConfig> = {
       "bg-fuchsia-500/10 ring-1 ring-fuchsia-500/20 hover:bg-fuchsia-500/20 text-fuchsia-600 dark:text-fuchsia-400",
     badgeClass:
       "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-500/20 border-0 gap-1.5",
+  },
+  kilo: {
+    label: "Kilo",
+    icon: <ProviderIcon icon="kilo" name="Kilo" size={14} />,
+    activeClass:
+      "bg-sky-500/10 ring-1 ring-sky-500/20 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400",
+    badgeClass:
+      "bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-0 gap-1.5",
   },
 };
 

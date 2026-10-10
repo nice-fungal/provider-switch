@@ -63,7 +63,8 @@ export function AddProviderDialog({
     appId !== "pi" &&
     appId !== "mcode" &&
     appId !== "grokbuild" &&
-    appId !== "claude-desktop";
+    appId !== "claude-desktop" &&
+    appId !== "kilo";
   const [activeTab, setActiveTab] = useState<"app-specific" | "universal">(
     "app-specific",
   );

@@ -496,11 +496,10 @@ fn handle_provider_click(
     if let Some(app_state) = app.try_state::<AppState>() {
         let app_type_str = app_type.as_str();
 
-        // 手动选了供应商就关掉 auto_failover；enabled 是模式的镜像，保持不变
-        let proxy_enabled = crate::mode::current::is_proxy(app_type);
+        // 手动选了供应商就关掉 auto_failover。
         app_state
             .db
-            .set_proxy_flags_sync(app_type_str, proxy_enabled, false)?;
+            .set_proxy_flags_sync(app_type_str, crate::mode::current::is_proxy(app_type), false)?;
 
         // 切换供应商。需要本地路由的供应商也不在这里自动启动代理，
         // 由用户在页面/设置中手动开启。
@@ -514,6 +513,7 @@ fn handle_provider_click(
         }
 
         // 发射事件到前端
+        let proxy_enabled = crate::mode::current::is_proxy(app_type);
         let event_data = serde_json::json!({
             "appType": app_type_str,
             "proxyEnabled": proxy_enabled,

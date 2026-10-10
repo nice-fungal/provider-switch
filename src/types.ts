@@ -289,6 +289,7 @@ export interface VisibleApps {
   hermes: boolean;
   pi: boolean;
   mcode: boolean;
+  kilo: boolean;
 }
 
 // WebDAV 同步状态
@@ -422,6 +423,8 @@ export interface Settings {
   currentProviderCodex?: string;
   // 当前 Gemini 供应商 ID（优先于数据库 is_current）
   currentProviderGemini?: string;
+  // 当前 Kilo 供应商 ID（优先于数据库 is_current）
+  currentProviderKilo?: string;
 
   // ===== WebDAV v2 同步设置 =====
   webdavSync?: WebDavSyncSettings;
